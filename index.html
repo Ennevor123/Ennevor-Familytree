@@ -22,6 +22,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
 
     body {
       margin: 0;
@@ -214,6 +215,52 @@
     .file-button { display: inline-flex; align-items: center; background: #eaf0f8; }
     .file-button input { display: none; }
 
+
+
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: min(430px, 100%);
+      background: rgba(255,255,255,0.97);
+      border: 1px solid rgba(219, 227, 239, 0.95);
+      border-radius: 22px;
+      box-shadow: 0 24px 70px rgba(31, 41, 55, 0.16);
+      padding: 30px;
+      text-align: center;
+    }
+
+    .login-card h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+    }
+
+    .login-card p {
+      margin: 0 0 22px;
+      color: var(--muted);
+    }
+
+    .login-card .field {
+      text-align: left;
+    }
+
+    .login-card button {
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    .login-error {
+      min-height: 1.4em;
+      margin: 12px 0 0 !important;
+      color: var(--danger) !important;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
     @media (max-width: 720px) {
       .grid { grid-template-columns: 1fr; }
       .field.full { grid-column: auto; }
@@ -222,6 +269,20 @@
   </style>
 </head>
 <body>
+  <section class="login-screen" id="loginScreen">
+    <form class="login-card" id="loginForm" autocomplete="off">
+      <h1>Ennevor Family Tree</h1>
+      <p>Please enter the family password to continue.</p>
+      <div class="field">
+        <label for="sitePassword">Password</label>
+        <input id="sitePassword" type="password" required autocomplete="current-password" placeholder="Enter password" />
+      </div>
+      <button type="submit" class="primary">Open Family Tree</button>
+      <p class="login-error" id="loginError" role="alert" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <div id="familyTreeApp" hidden>
   <header>
     <h1>Family Tree</h1>
     <p>Add family members, define relationships, and display the family tree visually.</p>
@@ -303,7 +364,47 @@
     </div>
   </div>
 
+  </div>
+
   <script>
+    const PASSWORD_HASH = 'd52c55464d166dab39dbf8d39cf3fb9122e481990ca07ff08a28d1116cc3f185';
+    const AUTH_SESSION_KEY = 'ennevor-family-tree-authenticated';
+    const loginScreen = document.getElementById('loginScreen');
+    const loginForm = document.getElementById('loginForm');
+    const passwordInput = document.getElementById('sitePassword');
+    const loginError = document.getElementById('loginError');
+    const familyTreeApp = document.getElementById('familyTreeApp');
+
+    async function hashText(value) {
+      const data = new TextEncoder().encode(value);
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(digest))
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    function showFamilyTree() {
+      loginScreen.hidden = true;
+      familyTreeApp.hidden = false;
+      renderAll();
+    }
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      loginError.textContent = '';
+
+      const enteredHash = await hashText(passwordInput.value);
+      if (enteredHash === PASSWORD_HASH) {
+        sessionStorage.setItem(AUTH_SESSION_KEY, 'true');
+        passwordInput.value = '';
+        showFamilyTree();
+        return;
+      }
+
+      loginError.textContent = 'Incorrect password. Please try again.';
+      passwordInput.select();
+    });
+
     const STORAGE_KEY = 'familienstammbaum-personen-v1';
     let people = loadPeople();
 
@@ -696,7 +797,11 @@
 
     window.editPerson = editPerson;
     window.deletePerson = deletePerson;
-    renderAll();
+    if (sessionStorage.getItem(AUTH_SESSION_KEY) === 'true') {
+      showFamilyTree();
+    } else {
+      passwordInput.focus();
+    }
   </script>
 </body>
 </html>
