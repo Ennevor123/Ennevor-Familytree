@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Family Tree</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --female: #fce7f3;
+      --female-border: #ec4899;
+      --male: #e0f2fe;
+      --male-border: #38bdf8;
+      --border: #dbe3ef;
+      --shadow: 0 12px 30px rgba(31, 41, 55, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(135deg, #eef4ff 0%, #f7f9fc 45%, #edf8f4 100%);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 30px 20px 18px;
+      text-align: center;
+    }
+
+    header h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 4vw, 2.8rem); }
+    header p { margin: 0; color: var(--muted); }
+
+    main {
+      width: min(1200px, calc(100% - 28px));
+      margin: 0 auto 40px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(219, 227, 239, 0.9);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field.full { grid-column: 1 / -1; }
+
+    label { font-weight: 700; font-size: 0.93rem; }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 11px 12px;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      transition: 0.2s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+
+    textarea { min-height: 90px; resize: vertical; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button, .file-button {
+      appearance: none;
+      border: 0;
+      border-radius: 11px;
+      padding: 11px 16px;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease, background .15s ease;
+    }
+
+    button:hover, .file-button:hover { transform: translateY(-1px); }
+    .primary { color: white; background: var(--primary); }
+    .primary:hover { background: var(--primary-dark); }
+    .secondary { color: var(--text); background: #eaf0f8; }
+    .danger { color: white; background: var(--danger); }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .toolbar h2, .card h2 { margin: 0; }
+
+    .person-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+    }
+
+    .person-card {
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 15px;
+      background: #fbfdff;
+      position: relative;
+    }
+
+    .person-card.female { background: var(--female); border-color: var(--female-border); }
+    .person-card.male { background: var(--male); border-color: var(--male-border); }
+
+    .person-card h3 { margin: 0 0 7px; padding-right: 70px; }
+    .person-card p { margin: 5px 0; color: var(--muted); font-size: 0.92rem; }
+    .person-card .small-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+    .person-card .small-actions button { padding: 6px 9px; border-radius: 8px; font-size: 0.78rem; }
+
+    .tree-wrap {
+      overflow: auto;
+      min-height: 420px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: radial-gradient(circle at top, #ffffff, #f4f8fc);
+    }
+
+    #treeSvg { min-width: 100%; display: block; }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 36px 12px;
+    }
+
+    .hint {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: #e8f0ff;
+      color: #1e40af;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.58);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal[hidden] { display: none; }
+
+    .modal-dialog {
+      width: min(720px, 100%);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+      padding: 22px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .modal-header h2 { margin: 0; }
+    .icon-button { padding: 7px 11px; font-size: 1.25rem; line-height: 1; }
+
+    body.modal-open { overflow: hidden; }
+
+    .file-button { display: inline-flex; align-items: center; background: #eaf0f8; }
+    .file-button input { display: none; }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .card { padding: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Family Tree</h1>
+    <p>Add family members, define relationships, and display the family tree visually.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="toolbar">
+        <h2>Visual Family Tree</h2>
+        <div class="actions" style="margin:0">
+          <button class="primary" id="openPersonModal">+ Add family member</button>
+          <button class="secondary" id="downloadSvg">Save Graphic as SVG</button>
+        </div>
+      </div>
+      <div class="tree-wrap">
+        <svg id="treeSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <p class="hint">People are arranged by generation. Connecting lines show parent-child relationships.</p>
+    </section>
+
+    <section class="card">
+      <div class="toolbar">
+        <h2>People</h2>
+        <div class="actions" style="margin:0">
+          <button class="secondary" id="demoData">Load Sample Data</button>
+          <button class="secondary" id="exportData">Export Data</button>
+          <label class="file-button">Import Data<input type="file" id="importData" accept="application/json" /></label>
+          <button class="danger" id="clearAll">Delete All</button>
+        </div>
+      </div>
+      <div id="personList" class="person-list"></div>
+    </section>
+  </main>
+
+  <div class="modal" id="personModal" hidden aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+      <div class="modal-header">
+        <h2 id="formTitle">Add family member</h2>
+        <button type="button" class="secondary icon-button" id="closePersonModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="personForm">
+        <input type="hidden" id="personId" />
+        <div class="grid">
+          <div class="field">
+            <label for="name">Name *</label>
+            <input id="name" required placeholder="e.g. Anna Miller" />
+          </div>
+          <div class="field">
+            <label for="birthDate">Date of Birth</label>
+            <input id="birthDate" type="date" />
+          </div>
+          <div class="field">
+            <label for="gender">Gender</label>
+            <select id="gender">
+              <option value="">No selection</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="parent1">Parent 1</label>
+            <select id="parent1"><option value="">No selection</option></select>
+          </div>
+          <div class="field">
+            <label for="parent2">Parent 2</label>
+            <select id="parent2"><option value="">No selection</option></select>
+          </div>
+          <div class="field full">
+            <label for="comment">Comments</label>
+            <textarea id="comment" placeholder="Notes, life events, occupation, place of residence ..."></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary">Save</button>
+          <button type="button" class="secondary" id="cancelEdit">Cancel</button>
+        </div>
+        <p class="hint">The data is stored locally in this browser.</p>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'familienstammbaum-personen-v1';
+    let people = loadPeople();
+
+    const form = document.getElementById('personForm');
+    const personId = document.getElementById('personId');
+    const nameInput = document.getElementById('name');
+    const birthDateInput = document.getElementById('birthDate');
+    const genderInput = document.getElementById('gender');
+    const commentInput = document.getElementById('comment');
+    const parent1Select = document.getElementById('parent1');
+    const parent2Select = document.getElementById('parent2');
+    const personList = document.getElementById('personList');
+    const treeSvg = document.getElementById('treeSvg');
+    const cancelEdit = document.getElementById('cancelEdit');
+    const formTitle = document.getElementById('formTitle');
+    const personModal = document.getElementById('personModal');
+
+    function loadPeople() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        const now = Date.now();
+        return Array.isArray(stored)
+          ? stored.map((person, index) => ({ ...person, createdAt: person.createdAt || now - (stored.length - index) }))
+          : [];
+      } catch { return []; }
+    }
+
+    function savePeople() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(people));
+      renderAll();
+    }
+
+    function escapeHtml(value = '') {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function normalizeName(value = '') {
+      return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en');
+    }
+
+    function isDuplicatePerson(candidate, ignoredId = '') {
+      const normalizedName = normalizeName(candidate.name);
+      return people.some(person =>
+        person.id !== ignoredId &&
+        normalizeName(person.name) === normalizedName &&
+        (person.birthDate || '') === (candidate.birthDate || '')
+      );
+    }
+
+    function findDuplicateRecords(records) {
+      const seen = new Set();
+      return records.some(person => {
+        const key = `${normalizeName(person.name)}|${person.birthDate || ''}`;
+        if (seen.has(key)) return true;
+        seen.add(key);
+        return false;
+      });
+    }
+
+    function formatDate(value) {
+      if (!value) return 'Not specified';
+      return new Intl.DateTimeFormat('en-GB').format(new Date(value + 'T00:00:00'));
+    }
+
+    function getPersonName(id) {
+      return people.find(p => p.id === id)?.name || 'Unknown';
+    }
+
+    function updateParentOptions() {
+      const currentId = personId.value;
+      const options = people
+        .filter(p => p.id !== currentId)
+        .sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0))
+        .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+        .join('');
+
+      const old1 = parent1Select.value;
+      const old2 = parent2Select.value;
+      parent1Select.innerHTML = '<option value="">No selection</option>' + options;
+      parent2Select.innerHTML = '<option value="">No selection</option>' + options;
+      if ([...parent1Select.options].some(o => o.value === old1)) parent1Select.value = old1;
+      if ([...parent2Select.options].some(o => o.value === old2)) parent2Select.value = old2;
+    }
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const id = personId.value || crypto.randomUUID();
+      const existing = people.find(person => person.id === id);
+      const record = {
+        id,
+        name: nameInput.value.trim().replace(/\s+/g, ' '),
+        birthDate: birthDateInput.value,
+        gender: genderInput.value,
+        comment: commentInput.value.trim(),
+        parents: [parent1Select.value, parent2Select.value].filter(Boolean),
+        createdAt: existing?.createdAt || Date.now()
+      };
+
+      if (!record.name) return;
+      if (isDuplicatePerson(record, id)) {
+        alert('This person already exists. A duplicate with the same name and date of birth is not allowed.');
+        return;
+      }
+      if (record.parents[0] && record.parents[0] === record.parents[1]) {
+        alert('Please select two different parents.');
+        return;
+      }
+
+      const index = people.findIndex(p => p.id === id);
+      if (index >= 0) people[index] = record;
+      else people.push(record);
+
+      savePeople();
+      closeModal();
+    });
+
+    function resetForm() {
+      form.reset();
+      personId.value = '';
+      formTitle.textContent = 'Add family member';
+      updateParentOptions();
+    }
+
+    function openModal() {
+      personModal.hidden = false;
+      personModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+      setTimeout(() => nameInput.focus(), 0);
+    }
+
+    function closeModal() {
+      personModal.hidden = true;
+      personModal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+      resetForm();
+    }
+
+    document.getElementById('openPersonModal').addEventListener('click', () => { resetForm(); openModal(); });
+    document.getElementById('closePersonModal').addEventListener('click', closeModal);
+    cancelEdit.addEventListener('click', closeModal);
+    personModal.addEventListener('click', event => { if (event.target === personModal) closeModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !personModal.hidden) closeModal(); });
+
+    function editPerson(id) {
+      const p = people.find(item => item.id === id);
+      if (!p) return;
+      personId.value = p.id;
+      nameInput.value = p.name;
+      birthDateInput.value = p.birthDate || '';
+      commentInput.value = p.comment || '';
+      genderInput.value = p.gender || '';
+      updateParentOptions();
+      parent1Select.value = p.parents?.[0] || '';
+      parent2Select.value = p.parents?.[1] || '';
+      formTitle.textContent = 'Edit family member';
+      openModal();
+    }
+
+    function deletePerson(id) {
+      const p = people.find(item => item.id === id);
+      if (!p || !confirm(`Do you really want to delete ${p.name}?`)) return;
+      people = people
+        .filter(item => item.id !== id)
+        .map(item => ({ ...item, parents: (item.parents || []).filter(parentId => parentId !== id) }));
+      resetForm();
+      savePeople();
+    }
+
+    function renderPeople() {
+      if (!people.length) {
+        personList.innerHTML = '<div class="empty">No people have been added yet.</div>';
+        return;
+      }
+
+      personList.innerHTML = people
+        .slice()
+        .sort((a,b) => a.name.localeCompare(b.name, 'en'))
+        .map(p => {
+          const parents = (p.parents || []).map(getPersonName).join(' & ') || 'Not specified';
+          return `
+            <article class="person-card ${p.gender === 'female' ? 'female' : p.gender === 'male' ? 'male' : ''}">
+              <div class="small-actions">
+                <button class="secondary" onclick="editPerson('${p.id}')">Edit</button>
+                <button class="danger" onclick="deletePerson('${p.id}')">Delete</button>
+              </div>
+              <h3>${escapeHtml(p.name)}</h3>
+              <p><strong>Born:</strong> ${formatDate(p.birthDate)}</p>
+              <p><strong>Gender:</strong> ${p.gender === 'female' ? 'Female' : p.gender === 'male' ? 'Male' : 'Not specified'}</p>
+              <p><strong>Parents:</strong> ${escapeHtml(parents)}</p>
+              ${p.comment ? `<p><strong>Comment:</strong> ${escapeHtml(p.comment)}</p>` : ''}
+              <span class="badge">Family member</span>
+            </article>`;
+        }).join('');
+    }
+
+    function generationOf(person, memo = new Map(), stack = new Set()) {
+      if (memo.has(person.id)) return memo.get(person.id);
+      if (stack.has(person.id)) return 0;
+      stack.add(person.id);
+      const parents = (person.parents || []).map(id => people.find(p => p.id === id)).filter(Boolean);
+      const generation = parents.length ? Math.max(...parents.map(p => generationOf(p, memo, stack) + 1)) : 0;
+      stack.delete(person.id);
+      memo.set(person.id, generation);
+      return generation;
+    }
+
+    function renderTree() {
+      treeSvg.innerHTML = '';
+      if (!people.length) {
+        treeSvg.setAttribute('viewBox', '0 0 900 420');
+        treeSvg.setAttribute('height', '420');
+        treeSvg.innerHTML = '<text x="450" y="210" text-anchor="middle" fill="#6b7280" font-size="18">Add people to display the family tree.</text>';
+        return;
+      }
+
+      const memo = new Map();
+      const generations = new Map();
+      people.forEach(p => {
+        const g = generationOf(p, memo);
+        if (!generations.has(g)) generations.set(g, []);
+        generations.get(g).push(p);
+      });
+
+      const nodeW = 190, nodeH = 86, gapX = 40, gapY = 100, margin = 45;
+      const maxCount = Math.max(...[...generations.values()].map(arr => arr.length));
+      const width = Math.max(900, margin * 2 + maxCount * nodeW + (maxCount - 1) * gapX);
+      const maxGeneration = Math.max(...generations.keys());
+      const height = margin * 2 + (maxGeneration + 1) * nodeH + maxGeneration * gapY;
+      treeSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      treeSvg.setAttribute('width', width);
+      treeSvg.setAttribute('height', height);
+
+      const positions = new Map();
+      [...generations.entries()].sort((a,b) => a[0]-b[0]).forEach(([g, arr]) => {
+        arr.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+        const rowWidth = arr.length * nodeW + (arr.length - 1) * gapX;
+        const startX = (width - rowWidth) / 2;
+        arr.forEach((p, i) => positions.set(p.id, {
+          x: startX + i * (nodeW + gapX),
+          y: margin + g * (nodeH + gapY)
+        }));
+      });
+
+      const svgNS = 'http://www.w3.org/2000/svg';
+
+      people.forEach(child => {
+        const childPos = positions.get(child.id);
+        (child.parents || []).forEach(parentId => {
+          const parentPos = positions.get(parentId);
+          if (!parentPos || !childPos) return;
+          const path = document.createElementNS(svgNS, 'path');
+          const x1 = parentPos.x + nodeW / 2;
+          const y1 = parentPos.y + nodeH;
+          const x2 = childPos.x + nodeW / 2;
+          const y2 = childPos.y;
+          const midY = (y1 + y2) / 2;
+          path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', '#94a3b8');
+          path.setAttribute('stroke-width', '3');
+          treeSvg.appendChild(path);
+        });
+      });
+
+      people.forEach(p => {
+        const pos = positions.get(p.id);
+        const group = document.createElementNS(svgNS, 'g');
+        group.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+
+        const rect = document.createElementNS(svgNS, 'rect');
+        rect.setAttribute('width', nodeW);
+        rect.setAttribute('height', nodeH);
+        rect.setAttribute('rx', '15');
+        const nodeFill = p.gender === 'female' ? '#fce7f3' : p.gender === 'male' ? '#e0f2fe' : '#ffffff';
+        const nodeStroke = p.gender === 'female' ? '#ec4899' : p.gender === 'male' ? '#38bdf8' : '#2563eb';
+        rect.setAttribute('fill', nodeFill);
+        rect.setAttribute('stroke', nodeStroke);
+        rect.setAttribute('stroke-width', '2');
+        rect.setAttribute('filter', 'drop-shadow(0px 7px 10px rgba(31,41,55,0.12))');
+        group.appendChild(rect);
+
+        const title = document.createElementNS(svgNS, 'text');
+        title.setAttribute('x', nodeW / 2);
+        title.setAttribute('y', 31);
+        title.setAttribute('text-anchor', 'middle');
+        title.setAttribute('font-size', '16');
+        title.setAttribute('font-weight', '700');
+        title.setAttribute('fill', '#1f2937');
+        title.textContent = p.name.length > 22 ? p.name.slice(0, 21) + '…' : p.name;
+        group.appendChild(title);
+
+        const date = document.createElementNS(svgNS, 'text');
+        date.setAttribute('x', nodeW / 2);
+        date.setAttribute('y', 56);
+        date.setAttribute('text-anchor', 'middle');
+        date.setAttribute('font-size', '13');
+        date.setAttribute('fill', '#6b7280');
+        date.textContent = p.birthDate ? `Born ${formatDate(p.birthDate)}` : 'Date of birth unknown';
+        group.appendChild(date);
+
+        const tooltip = document.createElementNS(svgNS, 'title');
+        tooltip.textContent = `${p.name}\nBorn: ${formatDate(p.birthDate)}${p.comment ? '\n' + p.comment : ''}`;
+        group.appendChild(tooltip);
+        treeSvg.appendChild(group);
+      });
+    }
+
+    function renderAll() {
+      updateParentOptions();
+      renderPeople();
+      renderTree();
+    }
+
+    document.getElementById('demoData').addEventListener('click', () => {
+      if (people.length && !confirm('Existing data will be replaced with sample data. Continue?')) return;
+      const a = crypto.randomUUID(), b = crypto.randomUUID(), c = crypto.randomUUID(), d = crypto.randomUUID();
+      const now = Date.now();
+      people = [
+        { id: a, name: 'Hans Miller', birthDate: '1948-04-12', gender: 'male', comment: 'Grandfather', parents: [], createdAt: now - 3 },
+        { id: b, name: 'Maria Miller', birthDate: '1951-09-03', gender: 'female', comment: 'Grandmother', parents: [], createdAt: now - 2 },
+        { id: c, name: 'Peter Miller', birthDate: '1976-02-19', gender: 'male', comment: 'Son of Hans and Maria', parents: [a,b], createdAt: now - 1 },
+        { id: d, name: 'Laura Miller', birthDate: '2005-11-27', gender: 'female', comment: 'Daughter of Peter', parents: [c], createdAt: now }
+      ];
+      resetForm();
+      savePeople();
+    });
+
+    document.getElementById('clearAll').addEventListener('click', () => {
+      if (!people.length || !confirm('Do you really want to delete all people?')) return;
+      people = [];
+      resetForm();
+      savePeople();
+    });
+
+    document.getElementById('exportData').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(people, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'family-tree-data.json';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    document.getElementById('importData').addEventListener('change', async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        if (!Array.isArray(parsed)) throw new Error('Invalid format');
+        const cleaned = parsed.map((person, index) => ({
+          ...person,
+          name: String(person.name || '').trim().replace(/\s+/g, ' '),
+          birthDate: person.birthDate || '',
+          gender: ['female', 'male'].includes(person.gender) ? person.gender : '',
+          comment: person.comment || '',
+          parents: Array.isArray(person.parents) ? person.parents : [],
+          createdAt: person.createdAt || Date.now() - (parsed.length - index)
+        }));
+        if (cleaned.some(person => !person.id || !person.name)) throw new Error('Invalid format');
+        if (findDuplicateRecords(cleaned)) {
+          alert('Import cancelled: the file contains duplicate people with the same name and date of birth.');
+          event.target.value = '';
+          return;
+        }
+        people = cleaned;
+        resetForm();
+        savePeople();
+      } catch {
+        alert('The file could not be imported.');
+      }
+      event.target.value = '';
+    });
+
+    document.getElementById('downloadSvg').addEventListener('click', () => {
+      const clone = treeSvg.cloneNode(true);
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const source = new XMLSerializer().serializeToString(clone);
+      const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'family-tree.svg';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    window.editPerson = editPerson;
+    window.deletePerson = deletePerson;
+    renderAll();
+  </script>
+</body>
+</html>
